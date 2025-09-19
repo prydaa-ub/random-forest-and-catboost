@@ -1,0 +1,57 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection 
+import train_test_split
+
+# Menggunakan CountVectorizer untuk membuat representasi Bag of Words
+count_vectorizer = CountVectorizer()
+X_bow = count_vectorizer.fit_transform(data_filter['komentar'].astype(str))
+print(f"Dimensi Bag of Words: {X_bow.shape}")
+
+# Membuat DataFrame dari hasil Bag of Words
+bow_df = pd.DataFrame(X_bow.toarray(), columns=count_vectorizer.get_feature_names_out())
+
+# Menambahkan kolom target 'sentimen' ke DataFrame Bag of Words
+bow_df['sentimen'] = data_filter['polarity']
+
+# Data Splitting (melibatkan indeks asli)
+indeks_asli = data_filter.indexXtrain, Xtest, Ytrain, Ytest, indeks_train, indeks_test = train_test_split( X_bow, data_filter['polarity'], indeks_asli, test_size=0.2, random_state=128)
+
+# Menampilkan dimensi data hasil splitting
+print(f"Dimensi X training data: {Xtrain.shape}")
+print(f"Dimensi Y training data: {Ytrain.shape}")
+print(f"Dimensi X testing data: {Xtest.shape}")
+print(f"Dimensi Y testing data: {Ytest.shape}")
+
+# Membuat DataFrame untuk data pelatihan
+df_train = pd.DataFrame({ 'Ulasan': data_filter.loc[indeks_train, 'komentar'].values, 'Sentimen': Ytrain.values })
+
+# Membuat DataFrame untuk data pengujian
+df_test = pd.DataFrame({ 'Ulasan': data_filter.loc[indeks_test, 'komentar'].values, 'Sentimen': Ytest.values })
+
+# Menampilkan DataFrame pelatihan
+print("Data Training:")
+print(df_train.head())
+# Menampilkan DataFrame pengujian
+print("\\nData Testing:")
+print(df_test.head())
+
+df_train.to_excel('data_training.xlsx', index=False)
+df_test.to_excel('data_testing.xlsx', index=False)
+
+# make merge tablebow_merge = bow_df.copy()bow_merge = bow_df.drop('sentimen', axis= 1)
+merge_train = pd.merge(bow_merge, df_train[['Sentimen']], left_index = True, right_index = True, how ='inner')
+
+# mencari suatu token dalam suatu sentimen
+token_testlist = ['bahasa']
+list_postoken = []
+list_negtoken = []
+for i in token_testlist: list_postoken.append(merge_train[(merge_train['Sentimen'] == 'positif')][i].sum()) list_negtoken.append(merge_train[(merge_train['Sentimen'] == 'negatif')][i].sum())
+
+# mencari jumlah token dalam suatu sentimen
+total_pos = merge_train[(merge_train['Sentimen'] == 'positif')]
+total_pos = total_pos.drop('Sentimen', axis = 1).sum().sum()
+total_neg = merge_train[(merge_train['Sentimen'] == 'negatif')]
+total_neg = total_neg.drop('Sentimen', axis = 1).sum().sum()
+abc = merge_train.shape[1]
+abc
