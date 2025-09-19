@@ -1,0 +1,40 @@
+lexicon_positif = dict()
+import csv
+with open('/content/gdrive/My Drive/positif.csv', 'r') as csvfile: 
+reader = csv.reader(csvfile, delimiter=';') 
+next(reader) 
+for row in reader: 
+lexicon_positif[row[0]] = int(row[1])
+
+lexicon_negatif = dict()
+with open('/content/gdrive/My Drive/negatif.csv', 'r') as csvfile: 
+reader = csv.reader(csvfile, delimiter=';') 
+next(reader) 
+for row in reader: 
+lexicon_negatif[row[0]] = int(row[1])
+
+print(lexicon_positif)
+print(lexicon_negatif)
+
+def sentiment_analysis_lexicon_indonesia(text): 
+text = str(text) 
+if text.strip() == 'nan': 
+return 0, 'netral' 
+text = text.split() 
+score = 0 
+for word in text: 
+if word in lexicon_positif: 
+score += lexicon_positif[word] 
+elif word in lexicon_negatif: 
+score += lexicon_negatif[word] 
+if score > 0: polarity = 'positif' 
+elif score < 0: polarity = 'negatif' 
+else: polarity = 'netral' 
+return score, polarity
+results =  
+data_fix['komentar'].apply(sentiment_analysis_lexicon_indonesia)
+results = 
+list(zip(*results))data_fix['score'] = 
+results[0]data_fix['polarity'] = 
+results[1]
+print(data_fix['polarity'].value_counts())
