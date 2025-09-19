@@ -19,3 +19,9 @@ plt.pie( percentages, labels=polarity_counts.index, autopct='%1.1f%%', startangl
 
 # Tambahkan judul
 plt.title("Distribusi Sentimen Komentar", fontsize=28)
+
+# Tampilkan plotplt.show()
+# Tambahkan judul
+plt.title("Distribusi Sentimen Komentar", fontsize=28)
+# Tampilkan plot
+plt.show()
