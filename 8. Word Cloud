@@ -1,0 +1,55 @@
+Word Cloud
+from PIL import Imagefrom wordcloud import WordCloud, STOPWORDS
+import matplotlib.pyplot as pltimport csv
+
+# Load kamus positif dan negatif
+lexicon_positif = {}
+lexicon_negatif = {}
+with open('/content/gdrive/My Drive/positif.csv', 'r') as csvfile: reader = csv.reader(csvfile, delimiter=';') 
+next(reader) 
+for row in reader: lexicon_positif[row[0]] = int(row[1])
+with open('/content/gdrive/My Drive/negatif.csv', 'r') as csvfile: reader = csv.reader(csvfile, delimiter=';') 
+next(reader) 
+for row in reader: lexicon_negatif[row[0]] = int(row[1])
+
+# Fungsi untuk mengambil kata berbobot 0 lalu mengkategorikan berdasarkan label kalimat
+def categorize_unlisted_words_by_sentence_label(data_column, labels, lexicon_positif, lexicon_negatif): 
+positive_words = [] 
+negative_words = [] 
+neutral_words = [] 
+for comment, label in zip(data_column, labels): 
+if isinstance(comment, str): 
+for word in comment.split(): 
+word_lower = word.lower() 
+if word_lower not in lexicon_positif and word_lower not in lexicon_negatif: 
+if label == 'positif': positive_words.append(word_lower) 
+elif label == 'negatif': negative_words.append(word_lower) 
+else: neutral_words.append(word_lower) return " ".join(positive_words), " ".join(negative_words), " ".join(neutral_words)
+
+# Asumsikan ada kolom 'komentar' dan 'label' di data_fixwords_positive, words_negative, words_neutral = categorize_unlisted_words_by_sentence_label( data_fix['komentar'], data_fix['polarity'], lexicon_positif, lexicon_negatif)
+
+# Stopwords kustom jika ada
+custom_stopwords = set(stopword_word)
+
+# WordCloud Positif
+wordcloud_positive = WordCloud( width=3000, height=2000, random_state=3, background_color='black', colormap='Blues_r', collocations=False, stopwords=custom_stopwords ).generate(words_positive)
+plt.figure(figsize=(10, 8))
+plt.imshow(wordcloud_positive, interpolation='bilinear')
+plt.axis("off")
+plt.title("WordCloud - Positif", fontsize=16)
+plt.show()
+
+# WordCloud Negatif
+wordcloud_negative = WordCloud( width=3000, height=2000, random_state=3, background_color='black', colormap='Reds_r', collocations=False, stopwords=custom_stopwords ).generate(words_negative)plt.figure(figsize=(10, 8))
+plt.imshow(wordcloud_negative, interpolation='bilinear')
+plt.axis("off")
+plt.title("WordCloud - Negatif", fontsize=16)
+plt.show()
+
+# WordCloud Netral
+wordcloud_neutral = WordCloud( width=3000, height=2000, random_state=3, background_color='black', colormap='Greens_r', collocations=False, stopwords=custom_stopwords ).generate(words_neutral)
+plt.figure(figsize=(10, 8))
+plt.imshow(wordcloud_neutral, interpolation='bilinear')
+plt.axis("off")
+plt.title("WordCloud - Netral", fontsize=16)
+plt.show()
