@@ -1,0 +1,15 @@
+stopword_word = pd.read_excel('/content/sample_data/stopword1.xlsx')
+if 'kata' in stopword_word.columns: stopword_word = stopword_word['kata'].dropna().astype(str).tolist()
+
+def stopwords_text(komentar): 
+komentar = [word for word in komentar if word not in stopword_word] 
+return komentar
+
+def stemming_text(komentar): 
+factory = StemmerFactory() 
+stemmer = factory.create_stemmer() komentar = [stemmer.stem(word) for word in komentar] 
+return komentar
+
+def toSentence(list_words): 
+sentence = ' '.join(word for word in list_words) 
+return sentence
