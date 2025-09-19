@@ -1,0 +1,218 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split, KFold, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+import numpy as np
+# Membuat DataFrame merge_train (menggabungkan fitur BoW training dan label training)
+X_train_df = pd.DataFrame(Xtrain.toarray(), columns=count_vectorizer.get_feature_names_out())
+# --- Bagian K-Fold CV dan Hyperparameter Tuning (seperti sebelumnya) ---
+kf = KFold(n_splits=3, shuffle=True, random_state=42)
+param_grid = {
+    'max_depth': [10, 15, 20],
+    'min_samples_split': [2, 3, 5],
+}
+rf_model = RandomForestClassifier(random_state=42)
+grid_search = GridSearchCV(estimator=rf_model, param_grid=param_grid, cv=kf,
+                           scoring='accuracy', n_jobs=-1, verbose=0) # Changed scoring to 'accuracy'
+grid_search.fit(Xtrain, Ytrain)
+# --- Matriks Perbandingan Hasil Tuning Hyperparameter ---
+print("\n=== Matriks Perbandingan Hasil Tuning Hyperparameter (Rata-rata dari 3-Fold CV) ===")
+
+# Buat DataFrame dari hasil GridSearchCV
+results = pd.DataFrame(grid_search.cv_results_)
+
+# Pilih kolom yang relevan: parameter dan skor rata-rata
+results_filtered = results[['param_max_depth', 'param_min_samples_split', 'mean_test_score', 'std_test_score']]
+
+# Urutkan berdasarkan mean_test_score (F1-score) secara menurun
+results_filtered = results_filtered.sort_values(by='mean_test_score', ascending=False)
+
+# Ganti nama kolom agar lebih mudah dibaca
+results_filtered = results_filtered.rename(columns={
+    'mean_test_score': 'Rata-rata Accuracy', # Updated column name
+    'std_test_score': 'Std. Deviasi Accuracy' # Updated column name
+})
+
+# Tampilkan tabel hasil
+print(results_filtered.to_string(index=False))
+
+# --- Visualisasi Heatmap (Opsional, untuk melihat pola kinerja) ---
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 7))
+# Updated pivot table values and title for Accuracy
+pivot_table = results_filtered.pivot_table(
+    values='Rata-rata Accuracy',
+    index='param_max_depth',
+    columns='param_min_samples_split'
+)
+sns.heatmap(pivot_table, annot=True, fmt=".4f", cmap="viridis", linewidths=.5)
+plt.title('Rata-rata Accuracy Berdasarkan Max Depth dan Min Samples Split') # Updated title
+plt.xlabel('min_samples_split')
+plt.ylabel('max_depth')
+plt.show()
+
+#Model Random Forest
+best_rf_model = grid_search.best_estimator_
+
+# --- Evaluasi Model Terbaik pada Data Testing ---
+print("\n=== Evaluasi Model Terbaik pada Data Testing ===")
+y_pred_test = best_rf_model.predict(Xtest)
+
+# Menghitung metrik evaluasi pada data testing
+accuracy = accuracy_score(Ytest, y_pred_test)
+precision = precision_score(Ytest, y_pred_test, average='weighted', zero_division=0)
+recall = recall_score(Ytest, y_pred_test, average='weighted', zero_division=0)
+f1 = f1_score(Ytest, y_pred_test, average='weighted', zero_division=0)
+conf_matrix = confusion_matrix(Ytest, y_pred_test)
+
+print(f"Akurasi: {accuracy:.4f}")
+print(f"Presisi (Weighted): {precision:.4f}")
+print(f"Recall (Weighted): {recall:.4f}")
+print(f"F1-Score (Weighted): {f1:.4f}")
+
+print("\nMatriks Konfusi:")
+# Menampilkan label kelas agar matriks konfusi lebih mudah diinterpretasi
+print(pd.DataFrame(conf_matrix, index=best_rf_model.classes_, columns=best_rf_model.classes_))
+print("-" * 30)
+
+# Menghitung batas split Gini untuk fitur 'bahasa'
+if 'bahasa' in merge_train.columns:
+nilai_unik_bahasa = sorted(merge_train['bahasa'].unique())
+print(f"\nNilai unik fitur 'bahasa': {nilai_unik_bahasa}")
+rata2_bahasa = []
+for i in range(len(nilai_unik_bahasa) - 1):
+batas = (nilai_unik_bahasa[i] + nilai_unik_bahasa[i+1]) / 2
+rata2_bahasa.append(float(batas))
+print("Batas rata-rata (split) untuk fitur 'bahasa':", rata2_bahasa)
+abc_bahasa = merge_train[['bahasa', 'Sentimen']].copy()
+for i, batas_val in enumerate(rata2_bahasa):
+col_name = f'batas_{batas_val}'
+abc_bahasa.loc[:, col_name] = np.where(abc_bahasa['bahasa'] <= batas_val, f'<={batas_val}', f'>{batas_val}')
+print("\n=== Kategori Berdasarkan Batas Fitur 'bahasa' (Head) ===")
+print(abc_bahasa.head())
+print("-" * 30)
+print("\n=== Frekuensi Batas Kategori (untuk fitur 'bahasa') ===")
+freq_data = []
+for i, batas_val in enumerate(rata2_bahasa):
+col_name = f'batas_{batas_val}'
+subset_le = abc_bahasa[abc_bahasa[col_name] == f'<={batas_val}']
+neg_le = subset_le['Sentimen'].value_counts().get('negatif', 0)
+pos_le = subset_le['Sentimen'].value_counts().get('positif', 0)
+freq_data.append({'Batas': f'Batas {i+1}', 'Kategori': f'<={batas_val}', 'Negatif': neg_le, 'Positif': pos_le, 'Total': neg_le + pos_le})
+subset_gt = abc_bahasa[abc_bahasa[col_name] == f'>{batas_val}']
+neg_gt = subset_gt['Sentimen'].value_counts().get('negatif', 0)
+pos_gt = subset_gt['Sentimen'].value_counts().get('positif', 0)
+freq_data.append({'Batas': '', 'Kategori': f'>{batas_val}', 'Negatif': neg_gt, 'Positif': pos_gt, 'Total': neg_gt + pos_gt})
+freq_df = pd.DataFrame(freq_data)
+print(freq_df.to_string(index=False))
+print("-" * 30)
+gini_splits = {}
+total_samples = len(abc_bahasa)
+for i, batas_val in enumerate(rata2_bahasa):
+col_name = f'batas_{batas_val}'
+less_than_equal_data = abc_bahasa[abc_bahasa[col_name] == f'<={batas_val}']
+greater_than_data = abc_bahasa[abc_bahasa[col_name] == f'>{batas_val}']
+n_left = len(less_than_equal_data)
+n_right = len(greater_than_data)
+if n_left > 0 and n_right > 0:
+p_left_pos = less_than_equal_data['Sentimen'].value_counts(normalize=True).get('positif', 0)
+p_left_neg = less_than_equal_data['Sentimen'].value_counts(normalize=True).get('negatif', 0)
+gini_left = 1 - (p_left_pos**2 + p_left_neg**2)
+p_right_pos = greater_than_data['Sentimen'].value_counts(normalize=True).get('positif', 0)
+p_right_neg = greater_than_data['Sentimen'].value_counts(normalize=True).get('negatif', 0)
+gini_right = 1 - (p_right_pos**2 + p_right_neg**2)
+gini_split = (n_left / total_samples) * gini_left + (n_right / total_samples) * gini_right
+gini_splits[(f'bahasa <= {batas_val}', f'bahasa > {batas_val}')] = gini_split
+print(f"Gini Split untuk batas <= {batas_val}: {gini_split:.4f}")
+else:
+print(f"Tidak dapat menghitung Gini Split untuk batas <= {batas_val} karena salah satu partisi kosong.")
+print("\n=== Hasil Gini Split untuk Fitur 'bahasa' ===")
+for split, gini in gini_splits.items():
+print(f"Split: {split}, Gini Split: {gini:.4f}")
+if gini_splits:
+best_split_bahasa = min(gini_splits, key=gini_splits.get)
+print(f"\nBatas Gini Split terkecil untuk 'bahasa' adalah {best_split_bahasa[0].split('<=')[1]} dengan Gini: {gini_splits[best_split_bahasa]:.4f}")
+else:
+print("Tidak ada Gini Split yang berhasil dihitung.")
+print("-" * 30)
+else:
+print("\nFitur 'bahasa' tidak ditemukan di data training.")
+# --- Visualisasi Pohon Keputusan Pertama ---
+print("\n=== Visualisasi Pohon Keputusan Pertama (Max Depth 10) ===")
+
+from sklearn.tree import export_graphviz
+import graphviz
+
+tree_to_visualize = best_rf_model.estimators_[0]
+
+dot_data = export_graphviz(
+    tree_to_visualize, out_file=None,
+    feature_names=count_vectorizer.get_feature_names_out(),
+    class_names=best_rf_model.classes_,
+    filled=True, rounded=True, special_characters=True,
+    max_depth=10
+)
+graph = graphviz.Source(dot_data)
+
+file_name = "pohon_rf_pertama"
+graph.render(file_name, view=True, format='pdf')
+print(f"Pohon keputusan pertama disimpan sebagai '{file_name}.pdf' dan dibuka.")
+# --- JUMLAH NODE DALAM POHON KEPUTUSAN PERTAMA ---
+num_nodes = tree_to_visualize.tree_.node_count
+print(f"\nJumlah node dalam pohon keputusan pertama: {num_nodes}")
+print("-" * 30)
+# --- PREDIKSI DARI SETIAP POHON UNTUK 1 SAMPEL TESTING ---
+if Xtest.shape[0] > 0:
+    sample_index = min(1, Xtest.shape[0] - 1)
+
+    if Xtest.shape[0] > sample_index:
+        sample_row = Xtest.getrow(sample_index)
+
+        sample_df_display = pd.DataFrame(sample_row.toarray(), columns=count_vectorizer.get_feature_names_out())
+
+        print(f"\nData fitur untuk sampel ke-{sample_index} pada Xtest:")
+        active_features = sample_df_display.iloc[0][sample_df_display.iloc[0] > 0]
+        if not active_features.empty:
+            print(active_features)
+        else:
+            print("Tidak ada fitur aktif (kata yang muncul) pada sampel ini.")
+
+        print(f"\nLabel asli untuk sampel ke-{sample_index}: {Ytest.iloc[sample_index]}")
+
+        prediction_data = []
+        for i, est in enumerate(best_rf_model.estimators_):
+            pred = est.predict(sample_row)
+            prediction_data.append({'Pohon': i + 1, 'Prediksi': pred[0]})
+
+        prediction_df = pd.DataFrame(prediction_data)
+
+        print("\nPrediksi dari setiap pohon untuk 1 sampel testing:")
+        print(prediction_df)
+
+        # --- Tambahan: Hitung Jumlah Positif dan Negatif dari Prediksi Semua Pohon ---
+        prediction_counts = prediction_df['Prediksi'].value_counts()
+        print("\nJumlah Prediksi per Kategori dari Semua Pohon:")
+        print(prediction_counts.to_string()) # to_string() untuk format lebih rapi
+        print("-" * 30)
+
+        # --- Tambahan: Hasil Majority Voting ---
+        majority_vote = prediction_df['Prediksi'].mode()
+
+        print("\n=== Hasil Majority Voting ===")
+
+# --- Mendapatkan pentingnya fitur dari model Random Forest ---
+feature_importance = best_rf_model.feature_importances_
+feature_names = count_vectorizer.get_feature_names_out()
+
+df_feature_importance = pd.DataFrame({
+    'Feature': feature_names,
+    'Importance': feature_importance
+})
+
+top_3_features = df_feature_importance.sort_values('Importance', ascending=False).head(3)
+print("\n=== 3 Fitur Terpenting ===")
+print(top_3_features)
+print("-" * 30)
