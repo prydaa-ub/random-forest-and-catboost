@@ -1,0 +1,32 @@
+from google.colab import driveimport pandas as pd
+
+# Mount Google Drivedrive.mount('/content/gdrive')
+
+# Define the file path in Google Drivefile_path = '/content/gdrive/My Drive/Data Komentar.xlsx'
+
+# Load the file back into a DataFrame
+data = pd.read_excel(file_path)print("File loaded successfully:")
+print(data.head())
+
+!pip install nltk
+!pip install Sastrawi
+!pip install deep-translator
+
+import nltk
+import pandas as pd
+import re
+import time
+import string from nltk.tokenize 
+import word_tokenize
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactoryfrom deep_translator import GoogleTranslatorfrom google.colab import drivedrive.mount('/content/gdrive')
+
+# Download 'punkt' and 'punkt_tab' datanltk.download('punkt')nltk.download('punkt_tab')
+# Fungsi untuk membersihkan teks komentardef clean_text(komentar): 
+# Pastikan input adalah string 
+komentar = str(komentar) 
+# Menghapus mentions 
+komentar = re.sub(r'@[A-Za-z0-9]+', '', komentar) 
+# Menghapus hashtag 
+komentar = re.sub(r'#[A-Za-z0-9]+', '', komentar) 
+# Menghapus URL (http, https, www)`
+komentar = re.sub(r"(?:@
