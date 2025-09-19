@@ -1,0 +1,14 @@
+# Proses Data Preprocessing
+data['clean'] = data['komentar'].apply(clean_text)data['casefolding'] = data['clean'].apply(casefolding_text)data['tokenizing'] = data['casefolding'].apply(tokenizing_text)data['normalized'] = data['tokenizing'].apply(normalized_term)
+data['stopwords'] = data['normalized'].apply(stopwords_text)
+data['stemming'] = data['stopwords'].apply(stemming_text)
+data['komentar'] = data['stemming'].apply(toSentence)
+
+# Menyimpan hasil preprocessing dalam DataFrame baru
+dataa = data
+
+# Tentukan path untuk menyimpan file ke Google Drivefile_path_fix = '/content/gdrive/My Drive/Data Gacor Parah1.xlsx'
+
+# Menyimpan DataFrame ke Google Drive dalam format Excel
+dataa.to_excel(file_path_fix, index=False)
+print(f"File saved to {file_path_fix}")
