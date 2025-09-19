@@ -1,0 +1,150 @@
+!pip install catboost --upgrade
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from catboost import CatBoostClassifier, Pool
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report, log_loss
+# Definisikan parameter grid untuk GridSearchCV
+# 'iterations' tidak akan di-tuning di sini, tapi akan ditentukan dari grafik
+param_grid_cb = {
+    'l2_leaf_reg': [0.001, 0.01, 0.5],  # Koefisien regularisasi L2
+    'learning_rate': [0.001, 0.01, 0.5], # Laju pembelajaran
+    'early_stopping_rounds': [50], # Menghentikan pelatihan jika tidak ada peningkatan dalam 50 iterasi
+    'verbose': [False], # Matikan output verbose selama tuning
+    'random_seed': [128], # Untuk reproduktifitas
+    'loss_function': ['Logloss'], # Selalu tentukan ini untuk klasifikasi biner
+    'eval_metric': ['F1'] # Metrik evaluasi yang akan dipantau oleh early stopping dan GridSearch
+}
+# Inisialisasi model CatBoost dasar
+cb_base = CatBoostClassifier() # Parameter akan diisi oleh GridSearchCV
+
+# Inisialisasi GridSearchCV
+# cv=3 berarti 3-fold cross-validation
+grid_search_cb = GridSearchCV(
+    estimator=cb_base,
+    param_grid=param_grid_cb,
+    cv=3,
+    scoring='accuracy', # Metrik evaluasi untuk memilih kombinasi l2_leaf_reg & learning_rate terbaik
+    verbose=1 # Menampilkan progress tuning
+)
+print("Melakukan Grid Search untuk kombinasi l2_leaf_reg dan learning_rate terbaik...")
+grid_search_cb.fit(Xtrain, Ytrain) # Latih GridSearchCV pada seluruh Xtrain, Ytrain
+
+print("\n--- Matriks Perbandingan Hyperparameter (l2_leaf_reg vs. learning_rate) ---")
+# Ambil hasil dari Grid Search
+results = grid_search_cb.cv_results_
+
+# Buat DataFrame dari hasil untuk kemudahan manipulasi
+df_results = pd.DataFrame(results)
+
+# Pilih kolom yang relevan: parameter dan mean_test_score
+# Parameternya disimpan dalam dictionary di kolom 'params', jadi kita perlu mengekstraknya
+df_results['l2_leaf_reg'] = df_results['params'].apply(lambda x: x['l2_leaf_reg'])
+df_results['learning_rate'] = df_results['params'].apply(lambda x: x['learning_rate'])
+# Buat pivot table untuk menampilkan matriks
+# Indeks: l2_leaf_reg, Kolom: learning_rate, Nilai: mean_test_score (F1-macro)
+pivot_table = df_results.pivot_table(
+    values='mean_test_score',
+    index='l2_leaf_reg',
+    columns='learning_rate'
+)
+
+print(pivot_table.round(4)) # Bulatkan ke 4 angka desimal untuk tampilan yang rapi
+# --- Visualisasi Heatmap (Opsional, untuk tampilan lebih menarik) ---
+plt.figure(figsize=(8, 6))
+sns.heatmap(pivot_table, annot=True, cmap='viridis', fmt=".4f", linewidths=.5)
+plt.title('Heatmap F1-Score (Macro) vs. Hyperparameters')
+plt.xlabel('Learning Rate')
+plt.ylabel('L2 Leaf Regularization')
+plt.show()
+
+best_params_cb_initial = grid_search_cb.best_params_
+best_score_cb_initial = grid_search_cb.best_score_
+# Pisahkan data training untuk mendapatkan validation set (penting untuk early stopping)
+# Stratify penting jika kelas tidak seimbang
+X_train_for_plot, X_val_for_plot, Y_train_for_plot, Y_val_for_plot = train_test_split(
+    Xtrain, Ytrain, test_size=0.2, random_state=128, stratify=Ytrain
+)
+
+# Inisialisasi model CatBoost dengan parameter terbaik yang ditemukan sebelumnya
+# Set 'iterations' ke nilai yang sangat besar, biarkan 'early_stopping_rounds' yang mengontrol
+model_cb_for_plot = CatBoostClassifier(
+    iterations=2000, # Atur jumlah iterasi maksimal yang cukup besar
+    learning_rate=best_params_cb_initial['learning_rate'],
+    l2_leaf_reg=best_params_cb_initial['l2_leaf_reg'],
+    loss_function='Logloss', # Fungsi loss yang dioptimalkan
+    eval_metric='F1',        # Metrik yang dipantau untuk early stopping dan plot
+    random_seed=128,
+    early_stopping_rounds=best_params_cb_initial['early_stopping_rounds'],
+    verbose=100 # Menampilkan log setiap 100 iterasi untuk melihat progress pelatihan
+)
+
+# Latih model dan simpan riwayat evaluasinya
+model_cb_for_plot.fit(
+    X_train_for_plot, Y_train_for_plot,
+    eval_set=(X_val_for_plot, Y_val_for_plot),
+# Ambil metrik dari riwayat pelatihan
+evals_result = model_cb_for_plot.get_evals_result()
+train_loss = evals_result['learn']['Logloss']
+val_loss = evals_result['validation']['Logloss']
+# Perbaikan: Mengakses metrik F1, bukan Accuracy
+train_metric = evals_result['learn']['F1']
+val_metric = evals_result['validation']['F1']
+
+
+# --- Visualisasi Perubahan Nilai Fungsi Loss dan Metrik Evaluasi ---
+print("\n--- Visualisasi Perubahan Loss dan Metrik Evaluasi per Epoch ---")
+
+# Re-creating the plot section to use two separate axes as originally intended
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+optimal_iterations = model_cb_for_plot.get_best_iteration() + 1
+print(f"\nIterasi Optimal yang ditemukan (dari Early Stopping): {optimal_iterations}")
+# Inisialisasi model CatBoost final dengan parameter terbaik dan iterasi optimal
+model_cb_final = CatBoostClassifier(
+    iterations=optimal_iterations, # Gunakan iterasi optimal yang ditemukan
+    learning_rate=best_params_cb_initial['learning_rate'],
+    l2_leaf_reg=best_params_cb_initial['l2_leaf_reg'],
+    loss_function='Logloss',
+    eval_metric='F1',
+    random_seed=128,
+    verbose=False # Matikan verbose untuk pelatihan final agar output bersih
+)
+
+# Latih model final pada seluruh data pelatihan
+model_cb_final.fit(Xtrain, Ytrain)
+# Prediksi label kelas pada data testing
+predicted_cb = model_cb_final.predict(Xtest)
+
+# Prediksi probabilitas untuk Log Loss
+# Pastikan urutan kelas sesuai dengan yang diharapkan oleh Log Loss (biasanya positif class di kolom ke-1)
+predicted_proba_cb = model_cb_final.predict_proba(Xtest)
+
+# Hitung metrik evaluasi
+accuracy_cb = accuracy_score(Ytest, predicted_cb)
+precision_cb = precision_score(Ytest, predicted_cb, average='binary', pos_label='positif')
+recall_cb = recall_score(Ytest, predicted_cb, average='binary', pos_label='positif')
+f1_cb = f1_score(Ytest, predicted_cb, average='binary', pos_label='positif')
+# Pastikan kelas 'positif' ada dan ambil indeksnya untuk log_loss
+pos_class_index_cb = model_cb_final.classes_.tolist().index('positif')
+logloss_cb = log_loss(Ytest, predicted_proba_cb[:, pos_class_index_cb])
+# --- Confusion Matrix ---
+print("\n--- Confusion Matrix CatBoost ---")
+cm_cb = confusion_matrix(Ytest, predicted_cb)
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm_cb, annot=True, fmt='d', cmap='Blues',
+            xticklabels=model_cb_final.classes_, # Label kelas dari model
+            yticklabels=model_cb_final.classes_)
+plt.title('Confusion Matrix CatBoost')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+# Mendapatkan pentingnya fitur dari model CatBoost
+feature_importance_cb = model_cb_final.get_feature_importance()    # Mengurutkan fitur berdasarkan nilai importance secara menurun
+    df_feature_importance_cb = df_feature_importance_cb.sort_values('Importance', ascending=False)
+
+    top_n_features_cb = 15 # Jumlah fitur teratas yang ingin ditampilkan
+    print(f"\nTop {top_n_features_cb} Fitur Penting dari CatBoost:")
+    # Menggunakan .to_string(index=False) untuk output DataFrame yang rapi
+    print(df_feature_importance_cb.head(top_n_features_cb).to_string(index=False))
