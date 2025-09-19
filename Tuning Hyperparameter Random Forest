@@ -1,0 +1,47 @@
+69	# --- Bagian K-Fold CV dan Hyperparameter Tuning (seperti sebelumnya) ---
+kf = KFold(n_splits=3, shuffle=True, random_state=42)
+param_grid = {
+    'max_depth': [10, 15, 20],
+    'min_samples_split': [2, 3, 5],
+}
+rf_model = RandomForestClassifier(random_state=42)
+grid_search = GridSearchCV(estimator=rf_model, param_grid=param_grid, cv=kf,
+                           scoring='accuracy', n_jobs=-1, verbose=0) # Changed scoring to 'accuracy'
+grid_search.fit(Xtrain, Ytrain)
+70	# --- Matriks Perbandingan Hasil Tuning Hyperparameter ---
+print("\n=== Matriks Perbandingan Hasil Tuning Hyperparameter (Rata-rata dari 3-Fold CV) ===")
+
+# Buat DataFrame dari hasil GridSearchCV
+results = pd.DataFrame(grid_search.cv_results_)
+
+# Pilih kolom yang relevan: parameter dan skor rata-rata
+results_filtered = results[['param_max_depth', 'param_min_samples_split', 'mean_test_score', 'std_test_score']]
+
+# Urutkan berdasarkan mean_test_score (F1-score) secara menurun
+results_filtered = results_filtered.sort_values(by='mean_test_score', ascending=False)
+
+# Ganti nama kolom agar lebih mudah dibaca
+results_filtered = results_filtered.rename(columns={
+    'mean_test_score': 'Rata-rata Accuracy', # Updated column name
+    'std_test_score': 'Std. Deviasi Accuracy' # Updated column name
+})
+
+# Tampilkan tabel hasil
+print(results_filtered.to_string(index=False))
+
+71	# --- Visualisasi Heatmap (Opsional, untuk melihat pola kinerja) ---
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 7))
+# Updated pivot table values and title for Accuracy
+pivot_table = results_filtered.pivot_table(
+    values='Rata-rata Accuracy',
+    index='param_max_depth',
+    columns='param_min_samples_split'
+)
+sns.heatmap(pivot_table, annot=True, fmt=".4f", cmap="viridis", linewidths=.5)
+plt.title('Rata-rata Accuracy Berdasarkan Max Depth dan Min Samples Split') # Updated title
+plt.xlabel('min_samples_split')
+plt.ylabel('max_depth')
+plt.show()
