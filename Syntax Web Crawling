@@ -1,0 +1,44 @@
+import pandas as pdfrom googleapiclient.discovery import build
+
+# Fungsi untuk mengambil komentar dari satu video
+def video_comments(video_id, api_key): 
+# List untuk menyimpan komentar 
+replies = []
+
+# Membuat objek YouTube API 
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+# Mengambil komentar dari video video_response = youtube.commentThreads().list(part='snippet,replies', videoId=video_id).execute()
+
+# Iterasi untuk mengambil komentar dan balasannya 
+while video_response: 
+for item in video_response['items']: 
+# Mengambil komentar utama
+published = item['snippet']['topLevelComment']['snippet']['publishedAt'] 
+user = item['snippet']['topLevelComment']['snippet']['authorDisplayName'] 
+comment = item['snippet']['topLevelComment']['snippet']['textDisplay'] replies.append([published, user, comment])
+
+# Mengambil balasan jika ada
+if item['snippet']['totalReplyCount'] > 0: for reply in item['replies']['comments']: published = reply['snippet']['publishedAt'] user = reply['snippet']['authorDisplayName'] 
+repl = reply['snippet']['textDisplay'] replies.append([published, user, repl])
+
+# Jika ada halaman berikutnya, lanjutkan 
+if 'nextPageToken' in video_response: video_response = youtube.commentThreads().list( part='snippet,replies', pageToken=video_response['nextPageToken'], videoId=video_id ).execute() 
+else: 
+break
+
+return replies
+
+# Fungsi untuk mengambil komentar dari beberapa videodef combined_video_comments(video_ids, api_key): all_comments = []
+
+for video_id in video_ids: print(f"Fetching comments for video: {video_id}") comments = video_comments(video_id, api_key) all_comments.extend(comments)
+
+return all_comments
+
+# Main program
+if __name__ == "__main__": 
+# Masukkan API key YouTube Data API 
+api_key = "AIzaSyAIXk98hxhFjeN3-LAmKke3IGCMG-owwc0" 
+# Daftar ID video YouTube video_ids = ['Y4j34_DDbyY', 'ZnAI2RbzOJ8', 'LFWSR77qE8Q', 'vxLbIh039qk'] 
+# Mengambil semua komentar all_comments = combined_video_comments(video_ids, api_key) # Menampilkan total komentar yang diambil print(f"Total comments fetched: {len(all_comments)}") 
+# Contoh untuk melihat 5 komentar pertama for comment in all_comments[:5]: print(comment)
