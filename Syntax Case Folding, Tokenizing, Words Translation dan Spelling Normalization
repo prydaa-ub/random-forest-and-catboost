@@ -1,0 +1,18 @@
+def casefolding_text(komentar): 
+komentar = komentar.lower() 
+return komentar
+
+def tokenizing_text(komentar): 
+komentar = word_tokenize(komentar) 
+return komentar
+
+# Word translation
+def translate_text(komentar): translated_words = [] 
+for i, word in enumerate(komentar): 
+if i > 0 and i % 4 == 0: translated_words.append(GoogleTranslator(source='auto',target='id').translate(word)) 
+return translated_words
+
+normalized_word = pd.read_excel('/content/sample_data/normalisasi1.xlsx')
+normalized_word_dict = {}
+for index, row in normalized_word.iterrows(): 
+if row[0] not in normalized_word_dict: normalized_word_dict[row[0]] = row[1]
