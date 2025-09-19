@@ -1,0 +1,21 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Menghapus baris dengan NaN pada kolom 'komentar'
+data_clean = data_fix.dropna(subset=['komentar'])
+
+# Hitung frekuensi untuk setiap kategori polaritas
+polarity_counts = data_clean['polarity'].value_counts()
+
+# Konversi frekuensi ke persentase
+percentages = (polarity_counts / len(data_clean)) * 100
+
+# Membuat pie chart
+plt.figure(figsize=(7, 7))
+colors = sns.color_palette("bright", n_colors=len(polarity_counts))
+
+# Membuat pie chart dengan anotasi persentase
+plt.pie( percentages, labels=polarity_counts.index, autopct='%1.1f%%', startangle=140, colors=colors, textprops={'fontsize': 24})
+
+# Tambahkan judul
+plt.title("Distribusi Sentimen Komentar", fontsize=28)
