@@ -1,0 +1,58 @@
+# Definisikan parameter grid untuk GridSearchCV
+# 'iterations' tidak akan di-tuning di sini, tapi akan ditentukan dari grafik
+param_grid_cb = {
+    'l2_leaf_reg': [0.001, 0.01, 0.5],  # Koefisien regularisasi L2
+    'learning_rate': [0.001, 0.01, 0.5], # Laju pembelajaran
+    'early_stopping_rounds': [50], # Menghentikan pelatihan jika tidak ada peningkatan dalam 50 iterasi
+    'verbose': [False], # Matikan output verbose selama tuning
+    'random_seed': [128], # Untuk reproduktifitas
+    'loss_function': ['Logloss'], # Selalu tentukan ini untuk klasifikasi biner
+    'eval_metric': ['F1'] # Metrik evaluasi yang akan dipantau oleh early stopping dan GridSearch
+}
+# Inisialisasi model CatBoost dasar
+cb_base = CatBoostClassifier() # Parameter akan diisi oleh GridSearchCV
+
+# Inisialisasi GridSearchCV
+# cv=3 berarti 3-fold cross-validation
+grid_search_cb = GridSearchCV(
+    estimator=cb_base,
+    param_grid=param_grid_cb,
+    cv=3,
+    scoring='accuracy', # Metrik evaluasi untuk memilih kombinasi l2_leaf_reg & learning_rate terbaik
+    verbose=1 # Menampilkan progress tuning
+)
+print("Melakukan Grid Search untuk kombinasi l2_leaf_reg dan learning_rate terbaik...")
+grid_search_cb.fit(Xtrain, Ytrain) # Latih GridSearchCV pada seluruh Xtrain, Ytrain
+
+print("\n--- Matriks Perbandingan Hyperparameter (l2_leaf_reg vs. learning_rate) ---")
+# Ambil hasil dari Grid Search
+results = grid_search_cb.cv_results_
+
+# Buat DataFrame dari hasil untuk kemudahan manipulasi
+df_results = pd.DataFrame(results)
+
+# Pilih kolom yang relevan: parameter dan mean_test_score
+# Parameternya disimpan dalam dictionary di kolom 'params', jadi kita perlu mengekstraknya
+df_results['l2_leaf_reg'] = df_results['params'].apply(lambda x: x['l2_leaf_reg'])
+df_results['learning_rate'] = df_results['params'].apply(lambda x: x['learning_rate'])
+
+# Buat pivot table untuk menampilkan matriks
+# Indeks: l2_leaf_reg, Kolom: learning_rate, Nilai: mean_test_score (F1-macro)
+pivot_table = df_results.pivot_table(
+    values='mean_test_score',
+    index='l2_leaf_reg',
+    columns='learning_rate'
+)
+
+print(pivot_table.round(4)) # Bulatkan ke 4 angka desimal untuk tampilan yang rapi
+
+# --- Visualisasi Heatmap (Opsional, untuk tampilan lebih menarik) ---
+plt.figure(figsize=(8, 6))
+sns.heatmap(pivot_table, annot=True, cmap='viridis', fmt=".4f", linewidths=.5)
+plt.title('Heatmap F1-Score (Macro) vs. Hyperparameters')
+plt.xlabel('Learning Rate')
+plt.ylabel('L2 Leaf Regularization')
+plt.show()
+
+best_params_cb_initial = grid_search_cb.best_params_
+best_score_cb_initial = grid_search_cb.best_score_
